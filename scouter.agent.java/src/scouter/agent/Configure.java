@@ -90,6 +90,8 @@ public class Configure extends Thread {
 	public int profile_fullstack_max_lines = 0;
 	public boolean profile_sql_escape_enabled = true;
 	public boolean _profile_fullstack_sql_connection_enabled = false;
+	public boolean profile_fullstack_rs_leak_enabled = false;
+	public boolean profile_fullstack_stmt_leak_enabled = false;
 
 	//Trace
 	public int trace_user_mode = 2; // 0:Remote IP, 1:JSessionID, 2:SetCookie
@@ -113,6 +115,9 @@ public class Configure extends Thread {
 	public String trace_webserver_name_header_key = "X-Forwarded-Host";
 	public String trace_webserver_time_header_key = "X-Forwarded-Time";
 	public int _trace_fullstack_socket_open_port = 0;
+
+	public boolean trace_rs_leak_enabled = false;
+	public boolean trace_stmt_leak_enabled = false;
 
 	//Dir
 	public File plugin_dir = new File("./plugin");
@@ -151,8 +156,8 @@ public class Configure extends Thread {
 	public String log_dir ="";
 	public boolean log_rotation_enabled =true;
 	public int log_keep_days =7;
-	public boolean _log_trace_enabled = false;
-    public boolean _log_trace_use_logger = false;
+	public boolean _trace = false;
+    public boolean _trace_use_logger = false;
 
 	//Hook
 	public String hook_args_patterns = "";
@@ -163,6 +168,7 @@ public class Configure extends Thread {
 	public String hook_method_patterns = "";
 	public String hook_method_ignore_prefixes = "get,set";
 	public String hook_method_ignore_classes = "";
+	public String hook_method_exclude_patterns = "";
 	private StringSet _hook_method_ignore_classes = new StringSet();
 	public boolean hook_method_access_public_enabled = true;
 	public boolean hook_method_access_private_enabled = false;
@@ -371,6 +377,7 @@ public class Configure extends Thread {
 		this.profile_connection_open_enabled = getBoolean("profile_connection_open_enabled", true);
 		this._summary_connection_leak_fullstack_enabled = getBoolean("_summary_connection_leak_fullstack_enabled", false);
 		this.hook_method_patterns = getValue("hook_method_patterns", "");
+		this.hook_method_exclude_patterns = getValue("hook_method_exclude_patterns", "");
 		this.hook_method_access_public_enabled = getBoolean("hook_method_access_public_enabled", true);
 		this.hook_method_access_protected_enabled = getBoolean("hook_method_access_protected_enabled", false);
 		this.hook_method_access_private_enabled = getBoolean("hook_method_access_private_enabled", false);
@@ -421,6 +428,9 @@ public class Configure extends Thread {
 		this.profile_fullstack_sql_error_enabled = getBoolean("profile_fullstack_sql_error_enabled", false);
 		this.profile_fullstack_sql_commit_enabled = getBoolean("profile_fullstack_sql_commit_enabled", false);
 		this.profile_fullstack_max_lines = getInt("profile_fullstack_max_lines", 0);
+		this.profile_fullstack_rs_leak_enabled = getBoolean("profile_fullstack_rs_leak_enabled", false);
+		this.profile_fullstack_stmt_leak_enabled = getBoolean("profile_fullstack_stmt_leak_enabled", false);
+
 		this.net_udp_collection_interval_ms = getInt("net_udp_collection_interval_ms", 100);
 		this.profile_http_parameter_url_prefix = getValue("profile_http_parameter_url_prefix", "/");
 		this.profile_http_header_url_prefix = getValue("profile_http_header_url_prefix", "/");
@@ -458,6 +468,10 @@ public class Configure extends Thread {
 		this.trace_webserver_enabled = getBoolean("trace_webserver_enabled", false);
 		this.trace_webserver_name_header_key = getValue("trace_webserver_name_header_key", "X-Forwarded-Host");
 		this.trace_webserver_time_header_key = getValue("trace_webserver_time_header_key", "X-Forwarded-Time");
+
+		this.trace_rs_leak_enabled = getBoolean("trace_rs_leak_enabled", false);
+		this.trace_stmt_leak_enabled = getBoolean("trace_stmt_leak_enabled", false);
+
 		// SUMMARY최대 갯수를 관리한다.
 		this.summary_enabled = getBoolean("summary_enabled", true);
 		this._summary_sql_max_count = getInt("_summary_sql_max_count", 5000);
@@ -491,8 +505,8 @@ public class Configure extends Thread {
 		this.log_dir = getValue("log_dir", "");
 		this.log_rotation_enabled = getBoolean("log_rotation_enabled", true);
 		this.log_keep_days = getInt("log_keep_days", 7);
-        this._log_trace_enabled = getBoolean("_log_trace_enabled", false);
-        this._log_trace_use_logger = getBoolean("_log_trace_use_logger", false);
+        this._trace = getBoolean("_trace", false);
+        this._trace_use_logger = getBoolean("_trace_use_logger", false);
 		
 		this.enduser_trace_endpoint_url = getValue("enduser_trace_endpoint_url", "_scouter_browser.jsp");
 		this.enduser_perf_endpoint_hash = HashUtil.hash(this.enduser_trace_endpoint_url);

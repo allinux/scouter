@@ -25,9 +25,6 @@ import java.util.TimeZone;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IPerspectiveDescriptor;
-import org.eclipse.ui.IPerspectiveListener;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.WorkbenchException;
 import org.eclipse.ui.application.ActionBarAdvisor;
 import org.eclipse.ui.application.IActionBarConfigurer;
@@ -36,6 +33,7 @@ import org.eclipse.ui.application.WorkbenchWindowAdvisor;
 
 import scouter.Version;
 import scouter.client.net.LoginMgr;
+import scouter.client.net.LoginResult;
 import scouter.client.popup.LoginDialog;
 import scouter.client.popup.LoginDialog.ILoginDialog;
 import scouter.client.preferences.PreferenceConstants;
@@ -45,7 +43,6 @@ import scouter.client.server.Server;
 import scouter.client.server.ServerManager;
 import scouter.client.threads.AlertProxyThread;
 import scouter.client.threads.SessionObserver;
-import scouter.client.util.RCPUtil;
 
 /*
  * ApplicationWorkbenchWindowAdvisor.preWindowOpen()
@@ -65,58 +62,6 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor im
 	Display display;
 	boolean finish = false;
 	
-	private static final String[] hideActions = {
-			"com.kyrsoft.stmemmon.actionSet",
-			"org.eclipse.debug.ui.breakpointActionSet",
-			"org.eclipse.debug.ui.debugActionSet",
-			"org.eclipse.debug.ui.launchActionSet",
-			"org.eclipse.debug.ui.profileActionSet",
-			"org.eclipse.jdt.ui.A_OpenActionSet",
-			"org.eclipse.jdt.ui.CodingActionSet",
-			"org.eclipse.jdt.ui.JavaActionSet",
-			"org.eclipse.jdt.ui.JavaElementCreationActionSet",
-			"org.eclipse.jdt.ui.SearchActionSet",
-			"org.eclipse.jdt.ui.text.java.actionSet.presentation",
-			"org.eclipse.search.searchActionSet",
-			"org.eclipse.team.ui.actionSet",
-			"org.eclipse.ui.NavigateActionSet",
-			"org.eclipse.ui.WorkingSetActionSet",
-			"org.eclipse.ui.WorkingSetActionSet.toolbar",
-			"org.eclipse.ui.WorkingSetModificationActionSet",
-			"org.eclipse.ui.edit.text.actionSet.annotationNavigation",
-			"org.eclipse.ui.edit.text.actionSet.convertLineDelimitersTo",
-			"org.eclipse.ui.edit.text.actionSet.navigation",
-			"org.eclipse.ui.edit.text.actionSet.presentation",
-			"org.eclipse.update.ui.softwareUpdates",
-			"org.eclipse.ui.actionSet.openFiles",
-			"org.eclipse.ui.actionSet.keyBindings",
-			"org.eclipse.ui.edit.text.actionSet.openExternalFile",
-			"org.eclipse.ui.externaltools.ExternalToolsSet" };
-
-	private static final String[] removePreferences = {
-		"org.eclipse.ant.ui.AntPreferencePage",
-		"org.eclipse.datatools.connectivity.ui.preferences.dataNode",
-		"org.eclipse.debug.ui.DebugPreferencePage",
-		"org.eclipse.help.ui.browsersPreferencePage",
-		"org.eclipse.jdt.ui.preferences.JavaBasePreferencePage",
-		"org.eclipse.pde.ui.MainPreferencePage",
-		"org.eclipse.team.ui.TeamPreferences",
-		"org.eclipse.ui.preferencePages.Workbench",
-		"org.eclipse.equinox.security.ui.category"
-		};
-	
-	private static final String[] removePerspectives = {
-		"org.eclipse.debug.ui.DebugPerspective",
-		"org.eclipse.jdt.ui.JavaPerspective",
-		"org.eclipse.jdt.ui.JavaHierarchyPerspective",
-		"org.eclipse.jdt.ui.JavaBrowsingPerspective",
-		"org.eclipse.team.ui.TeamSynchronizingPerspective"
-	};
-	
-	private static final String[] preLoadingPerspectives = {
-															PerspectiveService.ID
-															};
-
 	public ApplicationWorkbenchWindowAdvisor(
 			IWorkbenchWindowConfigurer configurer) {
 		super(configurer);
@@ -175,8 +120,8 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor im
 						if (index > -1) {
 							String id = accountInfo.substring(0, index);
 							String pwd = accountInfo.substring(index + 1, accountInfo.length());
-							boolean result = LoginMgr.silentLogin(server, id, pwd);
-							if (result) {
+							LoginResult result = LoginMgr.silentLogin(server, id, pwd);
+							if (result.success) {
 								autoLogined = true;
 							}
 						}
@@ -233,25 +178,6 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor im
 
 		if (isrcp) {
 			IWorkbenchWindowConfigurer configurer = getWindowConfigurer();
-
-			configurer.getWindow().addPerspectiveListener(
-					new IPerspectiveListener() {
-
-						public void perspectiveActivated(IWorkbenchPage page,
-								IPerspectiveDescriptor perspective) {
-							RCPUtil.hideActions(hideActions);
-						}
-
-						public void perspectiveChanged(IWorkbenchPage page,
-								IPerspectiveDescriptor perspective,
-								String changeId) {
-						}
-					});
-
-			RCPUtil.hideActions(hideActions);
-			RCPUtil.hidePreference(removePreferences);
-			RCPUtil.hidePerspectives(removePerspectives);
-			//RCPUtil.preLoadingPerspective(preLoadingPerspectives);
 			configurer.getWindow().getShell().setMaximized(true);
 			startBackgroundJob();
 		}
