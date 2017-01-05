@@ -17,20 +17,11 @@
  */
 package scouter.client.xlog.views;
 
-import java.util.ArrayList;
-
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.TableColumnLayout;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ColumnPixelData;
-import org.eclipse.jface.viewers.IColorProvider;
-import org.eclipse.jface.viewers.ILabelProviderListener;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.TableViewerColumn;
+import org.eclipse.jface.viewers.*;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
@@ -39,19 +30,10 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Monitor;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.ui.IViewReference;
+import org.eclipse.swt.widgets.*;
 import org.eclipse.ui.part.ViewPart;
-
 import scouter.client.Images;
-import scouter.client.model.DetachedManager;
 import scouter.client.model.TextProxy;
 import scouter.client.model.XLogData;
 import scouter.client.server.Server;
@@ -59,13 +41,14 @@ import scouter.client.server.ServerManager;
 import scouter.client.sorter.TableLabelSorter;
 import scouter.client.util.ColorUtil;
 import scouter.client.util.ImageUtil;
-import scouter.client.util.ScouterUtil;
 import scouter.client.xlog.actions.OpenXLogProfileJob;
-import scouter.util.DateUtil;
 import scouter.util.FormatUtil;
 import scouter.util.Hexa32;
 import scouter.util.IPUtil;
 import scouter.util.StringUtil;
+
+import java.util.ArrayList;
+import java.util.Date;
 
 
 public class XLogSelectionView extends ViewPart {
@@ -189,9 +172,9 @@ public class XLogSelectionView extends ViewPart {
 				}
 				return d.serviceName;
 			case START_TIME :
-				return DateUtil.getLogTime(d.p.endTime - d.p.elapsed);
+				return FormatUtil.print(new Date(d.p.endTime - d.p.elapsed), "HH:mm:ss.SSS");
 			case END_TIME :
-				return DateUtil.getLogTime(d.p.endTime);
+				return FormatUtil.print(new Date(d.p.endTime), "HH:mm:ss.SSS");
 			case TX_ID :
 				return Hexa32.toString32(d.p.txid);
 			case CPU :
@@ -200,14 +183,20 @@ public class XLogSelectionView extends ViewPart {
 				return FormatUtil.print(d.p.sqlCount, "#,##0");
 			case SQL_TIME :
 					return FormatUtil.print(d.p.sqlTime, "#,##0");
-			case BYTES :
-					return FormatUtil.print(d.p.bytes, "#,##0");
+			case KBYTES :
+					return FormatUtil.print(d.p.kbytes, "#,##0");
 			case IP :
 					return IPUtil.toString(d.p.ipaddr);
 			case ERROR :
 				return d.p.error == 0 ? "" : TextProxy.error.getLoadText(yyyymmdd, d.p.error, d.serverId);
 			case GX_ID :
 				return Hexa32.toString32(d.p.gxid);
+			case LOGIN :
+				return d.p.login != 0 ? TextProxy.login.getLoadText(yyyymmdd, d.p.login, d.serverId) : null;
+			case DESC :
+				return d.p.desc != 0 ? TextProxy.desc.getLoadText(yyyymmdd, d.p.desc, d.serverId) : null;
+			case DUMP :
+				return d.p.hasDump == 1 ? "Y" : null;
 			}
 			return null;
 		}
@@ -254,19 +243,22 @@ public class XLogSelectionView extends ViewPart {
 	}
 	
 	enum XLogColumnEnum {
-	    OBJECT("Object", 100, SWT.LEFT, true, true, false),
+	    OBJECT("Object", 80, SWT.LEFT, true, true, false),
 	    ELAPSED("Elapsed", 50, SWT.RIGHT, true, true, true),
 	    SERVICE("Service", 100, SWT.LEFT, true, true, false),
-	    START_TIME("StartTime", 60, SWT.CENTER, true, true, true),
-	    END_TIME("EndTime", 60, SWT.CENTER, true, true, true),
-	    TX_ID("Txid", 30, SWT.LEFT, true, true, false),
-	    CPU("Cpu", 50, SWT.RIGHT, true, true, true),
-	    SQL_COUNT("SQL Count", 50, SWT.RIGHT, true, true, true),
-	    SQL_TIME("SQL Time", 50, SWT.RIGHT, true, true, true),
-	    BYTES("Bytes", 50, SWT.RIGHT, true, true, true),
-	    IP("IP", 100, SWT.LEFT, true, true, false),
-	    ERROR("Error", 50, SWT.LEFT, true, true, false),
-	    GX_ID("Gxid", 30, SWT.LEFT, true, true, false);
+	    END_TIME("EndTime", 70, SWT.CENTER, true, true, true),
+		CPU("Cpu", 40, SWT.RIGHT, true, true, true),
+		SQL_COUNT("SQL Count", 50, SWT.RIGHT, true, true, true),
+		SQL_TIME("SQL Time", 50, SWT.RIGHT, true, true, true),
+		KBYTES("KBytes", 60, SWT.RIGHT, true, true, true),
+		IP("IP", 90, SWT.LEFT, true, true, false),
+		LOGIN("Login", 50, SWT.LEFT, true, true, false),
+		DUMP("Dump", 40, SWT.CENTER, true, true, false),
+		ERROR("Error", 50, SWT.LEFT, true, true, false),
+		TX_ID("Txid", 30, SWT.LEFT, true, true, false),
+		GX_ID("Gxid", 30, SWT.LEFT, true, true, false),
+		DESC("Desc", 50, SWT.LEFT, true, true, false),
+		START_TIME("StartTime", 70, SWT.CENTER, true, true, true);
 
 	    private final String title;
 	    private final int weight;

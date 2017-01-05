@@ -43,7 +43,10 @@ import scouter.client.actions.OpenActiveSpeedAction;
 import scouter.client.actions.OpenEQViewAction;
 import scouter.client.actions.OpenServiceGroupElapsedAction;
 import scouter.client.actions.OpenServiceGroupTPSAction;
+import scouter.client.actions.OpenVerticalEQViewAction;
 import scouter.client.actions.SetColorAction;
+import scouter.client.batch.actions.OpenCxtmenuBatchActiveListAction;
+import scouter.client.batch.actions.OpenCxtmenuBatchHistoryAction;
 import scouter.client.configuration.actions.DefineObjectTypeAction;
 import scouter.client.configuration.actions.OpenAgentConfigureAction;
 import scouter.client.constants.MenuStr;
@@ -368,6 +371,12 @@ public class MenuUtil implements IMenuCreator{
 				mgr.add(new Separator());
 				if (server.isAllowAction(GroupPolicyConstants.ALLOW_CONFIGURE))
 					mgr.add(new OpenAgentConfigureAction(win, MenuStr.CONFIGURE, objHash, serverId));
+			} else if (counterEngine.isChildOf(objType, CounterConstants.FAMILY_BATCH)) {
+				performanceCounter.add(new OpenCxtmenuBatchHistoryAction(win, MenuStr.BATCH_HISTORY, objHash, serverId));
+				mgr.add(new Separator());
+				if (server.isAllowAction(GroupPolicyConstants.ALLOW_CONFIGURE))
+					mgr.add(new OpenAgentConfigureAction(win, MenuStr.CONFIGURE, objHash, serverId));
+				performanceSnapshot.add(new OpenCxtmenuBatchActiveListAction(win, MenuStr.BATCH_ACTIVE_LIST, objHash, objType, serverId));
 			} 
     	}
     	if (server.isAllowAction(GroupPolicyConstants.ALLOW_DEFINEOBJTYPE)) {
@@ -391,7 +400,7 @@ public class MenuUtil implements IMenuCreator{
 		final CounterEngine counterEngine = ServerManager.getInstance().getServer(serverId).getCounterEngine();
 		ObjectType objectType = counterEngine.getObjectType(objType);
 		if (objectType == null) return;
-		final Counter counterObj = objectType.getFamily().getCounter(counter);
+		final Counter counterObj = objectType.getCounter(counter);
 		mgr.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager mgr) {
 				if (mgr == null) return;
@@ -498,6 +507,7 @@ public class MenuUtil implements IMenuCreator{
 			mgr.add(new Separator());
 			mgr.add(new OpenRTPairAllAction(win, "Heap Memory", serverId, objType, CounterConstants.JAVA_HEAP_TOT_USAGE));
 			mgr.add(new OpenEQViewAction(win, serverId, objType));
+			mgr.add(new OpenVerticalEQViewAction(win, serverId, objType));
 			mgr.add(new OpenActiveServiceListAction(win, objType, Images.thread, serverId));
 			mgr.add(new OpenActiveSpeedAction(win,objType, Images.TYPE_ACTSPEED, serverId));
 			mgr.add(new OpenXLogRealTimeAction(win, MenuStr.XLOG, objType, Images.star, serverId));

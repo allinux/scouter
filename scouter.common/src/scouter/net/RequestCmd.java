@@ -17,6 +17,9 @@
 
 package scouter.net;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class RequestCmd {
 	public static final String CLOSE = "CLOSE";
 	public static final String LOGIN = "LOGIN";
@@ -36,6 +39,7 @@ public class RequestCmd {
 	public static final String OBJECT_STAT_LIST = "OBJECT_STAT_LIST";
 	public static final String OBJECT_RESET_CACHE = "OBJECT_RESET_CACHE";
 	public static final String OBJECT_ACTIVE_SERVICE_LIST = "OBJECT_ACTIVE_SERVICE_LIST";
+	public static final String OBJECT_ACTIVE_SERVICE_LIST_GROUP = "OBJECT_ACTIVE_SERVICE_LIST_GROUP";
 	public static final String OBJECT_TODAY_FULL_LIST = "OBJECT_TODAY_FULL_LIST";
 	public static final String OBJECT_REMOVE = "OBJECT_REMOVE";
 	public static final String OBJECT_HEAPHISTO = "OBJECT_HEAPHISTO";
@@ -43,8 +47,13 @@ public class RequestCmd {
 
 	public static final String TRIGGER_ACTIVE_SERVICE_LIST = "TRIGGER_ACTIVE_SERVICE_LIST";
 	public static final String TRIGGER_THREAD_DUMP = "TRIGGER_THREAD_DUMP";
+    public static final String TRIGGER_THREAD_DUMPS_FROM_CONDITIONS = "TRIGGER_THREAD_DUMPS_FROM_CONDITIONS";
 	public static final String TRIGGER_THREAD_LIST = "TRIGGER_THREAD_LIST";
 	public static final String TRIGGER_HEAPHISTO = "TRIGGER_HEAPHISTO";
+
+    public static final String TRIGGER_DUMP_REASON = "TRIGGER_DUMP_REASON";
+    public static final String TRIGGER_DUMP_REASON_TYPE_CPU_EXCEEDED = "TRIGGER_DUMP_REASON_TYPE_CPU_EXCEEDED";
+
 	public static final String OBJECT_SYSTEM_GC = "OBJECT_SYSTEM_GC";
 	public static final String OBJECT_DUMP_FILE_LIST = "OBJECT_DUMP_FILE_LIST";
 	public static final String OBJECT_DUMP_FILE_DETAIL = "OBJECT_DUMP_FILE_DETAIL";
@@ -98,6 +107,7 @@ public class RequestCmd {
 	public static final String TRANX_PROFILE = "TRANX_PROFILE";
 	public static final String TRANX_PROFILE_FULL = "TRANX_PROFILE_FULL";
 	public static final String TRANX_REAL_TIME_GROUP = "TRANX_REAL_TIME_GROUP";
+	public static final String TRANX_REAL_TIME_GROUP_LATEST = "TRANX_REAL_TIME_GROUP_LATEST";
 	public static final String TRANX_LOAD_TIME_GROUP = "TRANX_LOAD_TIME_GROUP";
 	public static final String QUICKSEARCH_XLOG_LIST = "QUICKSEARCH_XLOG_LIST";
 	public static final String SEARCH_XLOG_LIST = "SEARCH_XLOG_LIST";
@@ -154,6 +164,7 @@ public class RequestCmd {
 	public static final String SET_CONFIGURE_WAS = "SET_CONFIGURE_WAS";
 	public static final String LIST_CONFIGURE_WAS = "LIST_CONFIGURE_WAS";
 	public static final String REDEFINE_CLASSES = "REDEFINE_CLASSES";
+	public static final String CONFIGURE_DESC = "CONFIGURE_DESC";
 
 	public static final String GET_XML_COUNTER = "GET_XML_COUNTER";
 
@@ -240,6 +251,7 @@ public class RequestCmd {
 	// VISITOR
 	public static final String VISITOR_REALTIME = "VISITOR_REALTIME";
 	public static final String VISITOR_REALTIME_TOTAL = "VISITOR_REALTIME_TOTAL";
+	public static final String VISITOR_REALTIME_GROUP = "VISITOR_REALTIME_GROUP";
 	public static final String VISITOR_LOADDATE = "VISITOR_LOADDATE";
 	public static final String VISITOR_LOADDATE_TOTAL = "VISITOR_LOADDATE_TOTAL";
 	public static final String VISITOR_LOADDATE_GROUP = "VISITOR_LOADDATE_GROUP";
@@ -257,5 +269,24 @@ public class RequestCmd {
 	public static final String LOAD_ENDUSER_NAV_SUMMARY = "LOAD_ENDUSER_NAV_SUMMARY";
 	public static final String LOAD_ENDUSER_AJAX_SUMMARY = "LOAD_ENDUSER_AJAX_SUMMARY";
 	public static final String LOAD_ENDUSER_ERROR_SUMMARY = "LOAD_ENDUSER_ERROR_SUMMARY";
+	
+	// batch job
+	public static final String BATCH_HISTORY_LIST = "BATCH_HISTORY_LIST";
+	public static final String BATCH_HISTORY_DETAIL = "BATCH_HISTORY_DETAIL";
+	public static final String BATCH_HISTORY_STACK = "BATCH_HISTORY_STACK";
+	public static final String BATCH_ACTIVE_STACK = "BATCH_ACTIVE_STACK";
+	public static final String OBJECT_BATCH_ACTIVE_LIST = "OBJECT_BATCH_ACTIVE_LIST";
+	
+	protected static Set<String> freeCmdSet = new HashSet<String>();
+	
+	static {
+		freeCmdSet.add(LOGIN);
+		freeCmdSet.add(SERVER_VERSION);
+		freeCmdSet.add(SERVER_TIME);
+	}
+	
+	public static boolean isFreeCmd(String cmd) {
+		return freeCmdSet.contains(cmd);
+	}
 
 }

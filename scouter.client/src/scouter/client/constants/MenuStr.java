@@ -202,4 +202,6 @@ public class MenuStr {
 	public static final String WHO               = "Who";
 	public static final String MEM_INFO               = "Mem Info";
 	
+	public static final String BATCH_HISTORY 		= "Batch History";
+	public static final String BATCH_ACTIVE_LIST 		= "Batch Active List";
 }

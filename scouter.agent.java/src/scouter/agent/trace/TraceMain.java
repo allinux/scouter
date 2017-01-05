@@ -69,11 +69,16 @@ public class TraceMain {
     private static Error userTxNotClose = new USERTX_NOT_CLOSE("UserTransaction missing commit/rollback Error");
     private static Error resultSetLeakSuspect = new RESULTSET_LEAK_SUSPECT("ResultSet Leak suspected!");
     private static Error statementLeakSuspect = new STATEMENT_LEAK_SUSPECT("Statement Leak suspected!");
+    private static DelayedServiceManager delayedServiceManager = DelayedServiceManager.getInstance();
+    public static ILoadController plController;
 
     public static Object startHttpService(Object req, Object res) {
         try {
             TraceContext ctx = TraceContextManager.getContext();
             if (ctx != null) {
+                return null;
+            }
+            if(TraceContextManager.startForceDiscard()) {
                 return null;
             }
             return startHttp(req, res);
@@ -89,6 +94,9 @@ public class TraceMain {
             if (ctx != null) {
                 return null;
             }
+            if(TraceContextManager.startForceDiscard()) {
+                return null;
+            }
             return startHttp(req, res);
         } catch (Throwable t) {
             Logger.println("A144", "fail to deploy ", t);
@@ -98,6 +106,21 @@ public class TraceMain {
 
     public static Object reject(Object stat, Object req, Object res) {
         Configure conf = Configure.getInstance();
+        if(plController != null) {
+        	if (stat == null || req == null || res == null)
+                return null;
+        	if (http == null) {
+                initHttp(req);
+            }
+    	    Stat stat0 = (Stat) stat;
+            if (stat0.isStaticContents) {
+                return null;
+            }
+        	if(plController.reject(stat0.ctx, req, res,http)) {
+        		endHttpService(stat0, REJECT);
+        		return REJECT;
+        	}
+        }
         if (conf.control_reject_service_enabled) {
             if (stat == null || req == null || res == null)
                 return null;
@@ -107,6 +130,8 @@ public class TraceMain {
             Stat stat0 = (Stat) stat;
             if (stat0.isStaticContents)
                 return null;
+            
+           
             // reject by customized plugin
             if (PluginHttpServiceTrace.reject(stat0.ctx, req, res)
                     // reject by control_reject_service_max_count
@@ -177,6 +202,7 @@ public class TraceMain {
         if (http == null) {
             initHttp(req);
         }
+        
         Configure conf = Configure.getInstance();
         TraceContext ctx = new TraceContext(conf.profile_summary_mode_enabled);
         ctx.thread = Thread.currentThread();
@@ -195,6 +221,9 @@ public class TraceMain {
 
         if (stat.isStaticContents == false) {
             PluginHttpServiceTrace.start(ctx, req, res);
+            if(plController != null) {
+            	plController.start(ctx, req, res);
+            }
         }
         return stat;
     }
@@ -208,11 +237,18 @@ public class TraceMain {
     }
 
     public static void endHttpService(Object stat, Throwable thr) {
+        if(TraceContextManager.isForceDiscarded()) {
+            TraceContextManager.clearForceDiscard();
+            return;
+        }
+
         try {
             Stat stat0 = (Stat) stat;
             if (stat0 == null) {
-                if (thr == null)
+                if (thr == null) {
+                    TraceContextManager.clearForceDiscard();
                     return;
+                }
                 try {
                     TraceContext ctx = TraceContextManager.getContext();
                     if (ctx != null && ctx.error == 0) {
@@ -220,13 +256,16 @@ public class TraceMain {
                         String emsg = thr.toString();
                         if (conf.profile_fullstack_service_error_enabled) {
                             StringBuffer sb = new StringBuffer();
-                            sb.append(emsg).append("\n");
+                            sb.append(thr.getClass().getName()).append("\n");
                             ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                            thr = thr.getCause();
-                            while (thr != null) {
-                                sb.append("\nCause...\n");
-                                ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                                thr = thr.getCause();
+                            Throwable thrCause = thr.getCause();
+                            if(thrCause != null) {
+                                thr = thrCause;
+                                while (thr != null) {
+                                    sb.append("\nCause...\n");
+                                    ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
+                                    thr = thr.getCause();
+                                }
                             }
                             emsg = sb.toString();
                         }
@@ -235,6 +274,8 @@ public class TraceMain {
                     }
                 } catch (Throwable t) {
                 }
+
+                TraceContextManager.clearForceDiscard();
                 return;
             }
             TraceContext ctx = stat0.ctx;
@@ -254,7 +295,9 @@ public class TraceMain {
             }
             // Plug-in end
             PluginHttpServiceTrace.end(ctx, stat0.req, stat0.res);
-
+            if(plController != null) {
+            	plController.end(ctx, stat0.req, stat0.res);
+            }
             //profile rs
             if(conf.trace_rs_leak_enabled && ctx.unclosedRsMap.size() > 0) {
                 MapValue mv = new MapValue();
@@ -295,24 +338,28 @@ public class TraceMain {
 
             // profile close
             TraceContextManager.end(ctx.threadId);
+
             Configure conf = Configure.getInstance();
             XLogPack pack = new XLogPack();
             // pack.endTime = System.currentTimeMillis();
             pack.elapsed = (int) (System.currentTimeMillis() - ctx.startTime);
-            boolean sendOk = pack.elapsed >= conf.xlog_lower_bound_time_ms;
-            ctx.profile.close(sendOk);
             ctx.serviceHash = DataProxy.sendServiceName(ctx.serviceName);
             pack.service = ctx.serviceHash;
             pack.xType = XLogTypes.WEB_SERVICE;
             pack.txid = ctx.txid;
             pack.gxid = ctx.gxid;
             pack.cpu = (int) (SysJMX.getCurrentThreadCPU() - ctx.startCpu);
-            pack.bytes = (int) (SysJMX.getCurrentThreadAllocBytes() - ctx.bytes);
+            pack.kbytes = (int) ((SysJMX.getCurrentThreadAllocBytes() - ctx.bytes) / 1024.0d);
             pack.status = ctx.status;
             pack.sqlCount = ctx.sqlCount;
             pack.sqlTime = ctx.sqlTime;
             pack.ipaddr = IPUtil.toBytes(ctx.remoteIp);
             pack.userid = ctx.userid;
+            if(ctx.hasDumpStack) {
+                pack.hasDump = 1;
+            } else {
+                pack.hasDump = 0;
+            }
             // ////////////////////////////////////////////////////////
             if (ctx.error != 0) {
                 pack.error = ctx.error;
@@ -328,11 +375,14 @@ public class TraceMain {
                         StringBuffer sb = new StringBuffer();
                         sb.append(emsg).append("\n");
                         ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                        thr = thr.getCause();
-                        while (thr != null) {
-                            sb.append("\nCause...\n");
-                            ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                            thr = thr.getCause();
+                        Throwable thrCause = thr.getCause();
+                        if(thrCause != null) {
+                            thr = thrCause;
+                            while (thr != null) {
+                                sb.append("\nCause...\n");
+                                ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
+                                thr = thr.getCause();
+                            }
                         }
                         emsg = sb.toString();
                     }
@@ -350,6 +400,8 @@ public class TraceMain {
                 ServiceSummary.getInstance().process(statementLeakSuspect, pack.error, ctx.serviceHash, ctx.txid, 0, 0);
             }
 
+            boolean sendable = (!TraceMain.evaluateXLogDiscard(pack.elapsed) || pack.error != 0);
+            ctx.profile.close(sendable);
             if (ctx.group != null) {
                 pack.group = DataProxy.sendGroup(ctx.group);
             }
@@ -369,8 +421,9 @@ public class TraceMain {
                 pack.webHash = DataProxy.sendWebName(ctx.web_name);
                 pack.webTime = ctx.web_time;
             }
+            delayedServiceManager.checkDelayedService(pack, ctx.serviceName);
             metering(pack);
-            if (sendOk) {
+            if (sendable) {
                 DataProxy.sendXLog(pack);
             }
         } catch (Throwable e) {
@@ -408,6 +461,10 @@ public class TraceMain {
             if (ctx != null) {
                 return null;
             }
+            if(TraceContextManager.startForceDiscard()) {
+                return null;
+            }
+
             Configure conf = Configure.getInstance();
             ctx = new TraceContext(conf.profile_summary_mode_enabled);
             String service_name = name;
@@ -445,10 +502,12 @@ public class TraceMain {
         try {
             LocalContext localCtx = (LocalContext) stat;
             if (localCtx == null) {
+                TraceContextManager.clearForceDiscard();
                 return;
             }
             TraceContext ctx = localCtx.context;
             if (ctx == null) {
+                TraceContextManager.clearForceDiscard();
                 return;
             }
             if (ctx.xType == XLogTypes.BACK_THREAD) {
@@ -471,13 +530,15 @@ public class TraceMain {
             pack.cpu = (int) (SysJMX.getCurrentThreadCPU() - ctx.startCpu);
             // pack.endTime = System.currentTimeMillis();
             pack.elapsed = (int) (System.currentTimeMillis() - ctx.startTime);
-            boolean sendOk = pack.elapsed >= Configure.getInstance().xlog_lower_bound_time_ms;
-            ctx.profile.close(sendOk);
+            pack.error = errorCheck(ctx, thr);
+
+            boolean sendable = (!TraceMain.evaluateXLogDiscard(pack.elapsed) || pack.error != 0);
+            ctx.profile.close(sendable);
             DataProxy.sendServiceName(ctx.serviceHash, ctx.serviceName);
             pack.service = ctx.serviceHash;
             pack.xType = ctx.xType;
             pack.cpu = (int) (SysJMX.getCurrentThreadCPU() - ctx.startCpu);
-            pack.bytes = (int) (SysJMX.getCurrentThreadAllocBytes() - ctx.bytes);
+            pack.kbytes = (int) ((SysJMX.getCurrentThreadAllocBytes() - ctx.bytes) / 1024.0d);
             pack.status = ctx.status;
             pack.sqlCount = ctx.sqlCount;
             pack.sqlTime = ctx.sqlTime;
@@ -486,7 +547,6 @@ public class TraceMain {
             pack.caller = ctx.caller;
             pack.ipaddr = IPUtil.toBytes(ctx.remoteIp);
             pack.userid = ctx.userid;
-            pack.error = errorCheck(ctx, thr);
             // 2015.11.10
             if (ctx.group != null) {
                 pack.group = DataProxy.sendGroup(ctx.group);
@@ -500,8 +560,10 @@ public class TraceMain {
             if (ctx.desc != null) {
                 pack.desc = DataProxy.sendDesc(ctx.desc);
             }
+            delayedServiceManager.checkDelayedService(pack, ctx.serviceName);
             metering(pack);
-            if (sendOk) {
+
+            if (sendable) {
                 DataProxy.sendXLog(pack);
             }
         } catch (Throwable t) {
@@ -520,11 +582,14 @@ public class TraceMain {
                 StringBuffer sb = new StringBuffer();
                 sb.append(emsg).append("\n");
                 ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                thr = thr.getCause();
-                while (thr != null) {
-                    sb.append("\nCause...\n");
-                    ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
-                    thr = thr.getCause();
+                Throwable thrCause = thr.getCause();
+                if(thrCause != null) {
+                    thr = thrCause;
+                    while (thr != null) {
+                        sb.append("\nCause...\n");
+                        ThreadUtil.getStackTrace(sb, thr, conf.profile_fullstack_max_lines);
+                        thr = thr.getCause();
+                    }
                 }
                 emsg = sb.toString();
             }
@@ -632,21 +697,28 @@ public class TraceMain {
     }
 
     public static Object startMethod(int hash, String classMethod) {
-        if (conf.profile_method_enabled == false)
+        if (conf.profile_method_enabled == false) {
             return null;
+        }
+
+        if(TraceContextManager.isForceDiscarded()) {
+            return null;
+        }
+
         TraceContext ctx = TraceContextManager.getContext();
         if (ctx == null) {
             if (conf._trace_auto_service_enabled) {
                 Object localContext = startService(classMethod, null, null, null, null, null, XLogTypes.APP_SERVICE);
-                //startService내부에서 에러가 나는 경우(발생하면 안됨)
-                //Null이 리턴될 수 있음(방어코드)
-                //@skyworker
-                if (localContext != null && conf._trace_auto_service_backstack_enabled) {
-                    String stack = ThreadUtil.getStackTrace(Thread.currentThread().getStackTrace(), 2);
-                    AutoServiceStartAnalyzer.put(classMethod, stack);
-                    MessageStep m = new MessageStep();
-                    m.message = "SERVICE BACKSTACK:\n" + stack;
-                    ((LocalContext) localContext).context.profile.add(m);
+				if (localContext != null) {
+					//service start
+					((LocalContext) localContext).service = true;
+					if (conf._trace_auto_service_backstack_enabled) {
+						String stack = ThreadUtil.getStackTrace(Thread.currentThread().getStackTrace(), 2);
+						AutoServiceStartAnalyzer.put(classMethod, stack);
+						MessageStep m = new MessageStep();
+						m.message = "SERVICE BACKSTACK:\n" + stack;
+						((LocalContext) localContext).context.profile.add(m);
+					}
                 }
                 return localContext;
             }
@@ -667,7 +739,7 @@ public class TraceMain {
             return;
         LocalContext lctx = (LocalContext) localContext;
         if (lctx.service) {
-            endService(lctx.option, null, thr);
+            endService(lctx, null, thr);
             return;
         }
         MethodStep step = (MethodStep) lctx.stepSingle;
@@ -706,7 +778,7 @@ public class TraceMain {
         pack.elapsed = elapsed;
         DataProxy.sendServiceName(service_hash, serviceName);
         pack.service = service_hash;
-        pack.bytes = 0;
+        pack.kbytes = 0;
         pack.status = 0;
         pack.sqlCount = sqlCount;
         pack.sqlTime = sqlTime;
@@ -736,8 +808,42 @@ public class TraceMain {
     }
 
     public static void ctxLookup(Object this1, Object ctx) {
+        if(TraceContextManager.isForceDiscarded()) {
+            return;
+        }
+
         if (ctx instanceof DataSource) {
             LoadedContext.put((DataSource) ctx);
         }
+    }
+
+    private static boolean evaluateXLogDiscard(int elapsed) {
+        boolean isXLogDisard = false;
+
+        if( elapsed < conf.xlog_lower_bound_time_ms) {
+            isXLogDisard = true;
+            return isXLogDisard;
+        }
+
+        if(conf.xlog_sampling_enabled) {
+            if(elapsed < conf.xlog_sampling_step1_ms) {
+                if(Math.abs(KeyGen.next()%100) >= conf.xlog_sampling_step1_rate_pct) {
+                    isXLogDisard = true;
+                }
+            } else if(elapsed < conf.xlog_sampling_step2_ms) {
+                if(Math.abs(KeyGen.next()%100) >= conf.xlog_sampling_step2_rate_pct) {
+                    isXLogDisard = true;
+                }
+            } else if(elapsed < conf.xlog_sampling_step3_ms) {
+                if(Math.abs(KeyGen.next()%100) >= conf.xlog_sampling_step3_rate_pct) {
+                    isXLogDisard = true;
+                }
+            } else {
+                if(Math.abs(KeyGen.next()%100) >= conf.xlog_sampling_over_rate_pct) {
+                    isXLogDisard = true;
+                }
+            }
+        }
+        return isXLogDisard;
     }
 }

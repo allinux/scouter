@@ -94,24 +94,66 @@ class XLogService {
 
     @ServiceHandler(RequestCmd.TRANX_REAL_TIME_GROUP)
     def getRealtimePerfGroup(din: DataInputX, dout: DataOutputX, login: Boolean) {
-
         val param = din.readMapPack();
         val index = param.getInt("index");
         val loop = param.getLong("loop");
         var limit = param.getInt("limit");
         limit = Math.max(Configure.getInstance().xlog_realtime_lower_bound_ms, limit);
         val objHashLv = param.getList("objHash");
-        if (objHashLv == null || objHashLv.size() < 1) {
-            return ;
-        }
 
-        val intSet = new IntSet(objHashLv.size(), 1.0f);
+        val intSet = if(objHashLv == null || objHashLv.size() < 1)
+                     null
+                     else new IntSet(objHashLv.size(), 1.0f)
+
         EnumerScala.foreach(objHashLv, (obj: DecimalValue) => {
             intSet.add(obj.intValue());
         })
-        val d = XLogCache.get(intSet, loop, index, limit);
+
+        val d = if(intSet != null)
+                XLogCache.get(intSet, loop, index, limit)
+                else XLogCache.get(loop, index, limit)
+
+        if (d == null) return ;
+
+        // 첫번째 패킷에 정보를 전송한다.
+        val outparam = new MapPack();
+        outparam.put("loop", new DecimalValue(d.loop));
+        outparam.put("index", new DecimalValue(d.index));
+        dout.writeByte(TcpFlag.HasNEXT);
+        dout.writePack(outparam);
+
+        EnumerScala.forward(d.data, (p: Array[Byte]) => {
+            dout.writeByte(TcpFlag.HasNEXT);
+            dout.write(p);
+        })
+
+    }
+
+    @ServiceHandler(RequestCmd.TRANX_REAL_TIME_GROUP_LATEST)
+    def getRealtimePerfGroupLatestCount(din: DataInputX, dout: DataOutputX, login: Boolean) {
+
+        val param = din.readMapPack();
+        val index = param.getInt("index");
+        val loop = param.getLong("loop");
+        var count = param.getInt("count");
+
+        val objHashLv = param.getList("objHash");
+
+        val objHashSet = if(objHashLv == null || objHashLv.size() < 1)
+            null
+        else new IntSet(objHashLv.size(), 1.0f)
+
+        EnumerScala.foreach(objHashLv, (obj: DecimalValue) => {
+            objHashSet.add(obj.intValue());
+        })
+
+        val d = if(objHashSet != null)
+                    XLogCache.getWithinCount(objHashSet, loop, index, count)
+                else XLogCache.getWithinCount(loop, index, count)
+
         if (d == null)
             return ;
+
         // 첫번째 패킷에 정보를 전송한다.
         val outparam = new MapPack();
         outparam.put("loop", new DecimalValue(d.loop));

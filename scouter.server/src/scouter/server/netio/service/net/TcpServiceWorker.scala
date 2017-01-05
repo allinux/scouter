@@ -31,6 +31,7 @@ import scouter.net.TcpFlag
 import scouter.server.{Logger, LoginManager, Configure}
 import scouter.server.logs.RequestLogger
 import scouter.server.netio.service.ServiceHandlingProxy
+import scouter.server.netio.req.net.TcpAgentReqWorker
 import scouter.util.FileUtil
 import scouter.util.Hexa32
 
@@ -75,6 +76,11 @@ class ServiceWorker(_socket: Socket) extends Runnable {
                         Logger.println("Agent : " + remoteAddr + " open [" + Hexa32.toString32(objHash) + "] #" + num);
                     }
                     return
+                case NetCafe.TCP_AGENT_REQ =>
+                    val objHash = in.readInt()
+                    val worker = new TcpAgentReqWorker(objHash, socket)
+                    worker.start()
+                    return
                 case NetCafe.TCP_CLIENT =>
                     if (conf.log_tcp_action_enabled) {
                         Logger.println("Client : " + remoteAddr + " open #" + (ServiceWorker.getActiveCount() + 1));
@@ -99,17 +105,23 @@ class ServiceWorker(_socket: Socket) extends Runnable {
         try {
 
             ServiceWorker.inc();
-
+            var sessionOk = false;
             while (true) {
                 val cmd = in.readText();
                 if (RequestCmd.CLOSE.equals(cmd)) {
                     return
                 }
                 val session = in.readLong();
-                val login = LoginManager.okSession(session);
-
+                if (sessionOk == false && RequestCmd.isFreeCmd(cmd) == false) {
+                	sessionOk = LoginManager.okSession(session);
+                  if (sessionOk == false) {
+                    out.writeByte(TcpFlag.INVALID_SESSION);
+                    out.flush();
+                    throw new RuntimeException("Invalid session key : " + cmd);
+                  }
+                }
                 RequestLogger.getInstance().add(cmd, session);
-                ServiceHandlingProxy.process(cmd, in, out, login);
+                ServiceHandlingProxy.process(cmd, in, out, sessionOk);
 
                 out.writeByte(TcpFlag.NoNEXT);
                 out.flush();
@@ -133,7 +145,8 @@ class ServiceWorker(_socket: Socket) extends Runnable {
                 if (conf.log_tcp_action_enabled) {
                     Logger.println("Client : " + remoteAddr + " closed " + e + " workers=" + ServiceWorker.getActiveCount());
                 }
-            case t: Throwable => t.printStackTrace();
+            case t: Throwable =>
+                Logger.println("SC-400", 30, "ServiceWorker closed", t)
         } finally {
             FileUtil.close(in);
             FileUtil.close(out);

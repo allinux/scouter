@@ -17,37 +17,23 @@
  */
 package scouter.client.xlog;
 
-import java.util.ArrayList;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Button;
-
 import scouter.client.model.TextProxy;
 import scouter.client.util.StepWrapper;
 import scouter.client.xlog.views.XLogProfileView;
 import scouter.lang.pack.XLogPack;
-import scouter.lang.step.ApiCallStep;
-import scouter.lang.step.ApiCallSum;
-import scouter.lang.step.HashedMessageStep;
-import scouter.lang.step.MessageStep;
-import scouter.lang.step.MethodStep;
-import scouter.lang.step.MethodStep2;
-import scouter.lang.step.MethodSum;
-import scouter.lang.step.SocketStep;
-import scouter.lang.step.SocketSum;
-import scouter.lang.step.SqlStep;
-import scouter.lang.step.SqlSum;
-import scouter.lang.step.StepEnum;
-import scouter.lang.step.StepSingle;
-import scouter.lang.step.StepSummary;
-import scouter.util.DateUtil;
+import scouter.lang.step.*;
 import scouter.util.FormatUtil;
 import scouter.util.Hexa32;
 import scouter.util.IPUtil;
 import scouter.util.StringUtil;
+
+import java.util.ArrayList;
+import java.util.Date;
 
 public class ProfileTextFull {
 	
@@ -66,7 +52,7 @@ public class ProfileTextFull {
 		final StringBuffer sb = new StringBuffer();
 		sb.append("► txid    = ").append(Hexa32.toString32(p.txid)).append("\n");
 		sb.append("► objName = ").append(objName).append("\n");
-		sb.append("► endtime = ").append(DateUtil.timestamp(p.endTime)).append("\n");
+		sb.append("► endtime = ").append(FormatUtil.print(new Date(p.endTime), "yyyyMMdd HH:mm:ss.SSS")).append("\n");
 		sb.append("► elapsed = ").append(FormatUtil.print(p.elapsed, "#,##0")).append(" ms\n");
 		sb.append("► service = ").append(TextProxy.service.getText(p.service)).append("\n");
 		if (error != null) {
@@ -79,7 +65,7 @@ public class ProfileTextFull {
 		sb.append("► ipaddr=" + IPUtil.toString(p.ipaddr) + ", ");
 		sb.append("userid=" + p.userid);
 		sb.append("\n► cpu=" + FormatUtil.print(p.cpu, "#,##0") + " ms, ");
-		sb.append("bytes=" + p.bytes + ", ");
+		sb.append("kbytes=" + p.kbytes + ", ");
 		sb.append("status=" + p.status);
 		if (p.sqlCount > 0) {
 			sb.append("\n► sqlCount=" + p.sqlCount + ", ");
@@ -103,6 +89,10 @@ public class ProfileTextFull {
 		t = TextProxy.group.getLoadText(date, p.group, serverId);
 		if (StringUtil.isNotEmpty(t)) {
 			sb.append("\n► group=" + t);
+		}
+
+		if (p.hasDump == 1) {
+			sb.append("\n► dump=Y");
 		}
 		
 		sb.append("\n");
@@ -176,7 +166,7 @@ public class ProfileTextFull {
 			sb.append(" ");
 			sb.append("["+astarStr+"]");
 			sb.append(" ");
-			sb.append(DateUtil.getLogTime(stime));
+			sb.append(FormatUtil.print(new Date(stime), "HH:mm:ss.SSS"));
 			sb.append("   ");
 			sb.append(String.format("%6s", "0"));
 			sb.append(" ");
@@ -263,7 +253,7 @@ public class ProfileTextFull {
 			sb.append(" ");
 			sb.append(String.format("[%0"+length+"d]", stepSingle.index));
 			sb.append(" ");
-			sb.append(DateUtil.getLogTime(tm));
+			sb.append(FormatUtil.print(new Date(tm), "HH:mm:ss.SSS"));
 			sb.append("   ");
 			sb.append(String.format("%6s", FormatUtil.print(tm - prev_tm, "#,##0")));
 			sb.append(" ");
@@ -378,7 +368,7 @@ public class ProfileTextFull {
 			sb.append(" ");
 			sb.append("["+astarStr+"]");
 			sb.append(" ");
-			sb.append(DateUtil.getLogTime(tm));
+			sb.append(FormatUtil.print(new Date(tm), "HH:mm:ss.SSS"));
 			sb.append("   ");
 			if(!isSummary){
 				sb.append(String.format("%6s", FormatUtil.print(tm - prev_tm, "#,##0")));

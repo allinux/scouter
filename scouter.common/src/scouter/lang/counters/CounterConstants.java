@@ -27,6 +27,7 @@ public class CounterConstants {
 	public final static String FAMILY_DATASOURCE = "datasource";
 	public final static String FAMILY_REQUEST_PROCESS = "reqproc";
 	public final static String FAMILY_MARIA = "maria";
+	public final static String FAMILY_BATCH = "batch";
 
 	public final static String HOST = "host";
 	public final static String WINDOWS = "windows";
@@ -41,6 +42,8 @@ public class CounterConstants {
 	public final static String JBOSS = "jboss";
 	public final static String JETTY = "jetty";
 	public final static String RESIN = "resin";
+	
+	public final static String BATCH = "batch";
 
 	public final static String DATASOURCE = "datasource";
 	public final static String CONTEXT = "context";
@@ -144,5 +147,9 @@ public class CounterConstants {
 	public static final String WAS_APICALL_TIME = "ApiTime";
 	public static final String WAS_APICALL_TPS = "ApiTPS";
 	public static final String WAS_APICALL_ERROR_RATE = "ApiErrorRate";
-
+	
+	public static final String BATCH_SERVICE = "BatchService";
+	public static final String BATCH_START = "BatchStart";
+	public static final String BATCH_END = "BatchEnd";
+	public static final String BATCH_ENDNOSIGNAL = "BatchEndNoSignal";
 }

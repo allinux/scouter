@@ -32,12 +32,17 @@ import scouter.agent.counter.anotation.Counter;
 import scouter.lang.counters.CounterConstants;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class HostNetDiskPerf {
+	static char ch_l = 'l';
+	static char ch_o = 'o';
 	static int SLEEP_TIME = 2000;
 	static Sigar sigarImpl = new Sigar();
 	static SigarProxy sigar = SigarProxyCache.newInstance(sigarImpl, SLEEP_TIME);
+	private Set<String> fsExceptionOccured = new HashSet<String>();
 	
 	private static String[] netIf = null;
 	private static FileSystem[] fs = null;
@@ -89,12 +94,18 @@ public class HostNetDiskPerf {
 			long tmpTxTotal = 0L;
 
 			for (int i = 0; i < netIf.length; i++) {
+				String netIfName = netIf[i];
+				if(netIfName.length() >= 2) {
+					if(netIfName.charAt(0) == ch_l && netIfName.charAt(1) == ch_o) {
+						continue;
+					}
+				}
 				NetInterfaceStat net = null;
 				try {
-					net = sigar.getNetInterfaceStat(netIf[i]);
+					net = sigar.getNetInterfaceStat(netIfName);
 				} catch (SigarException e) {
 					// Ignore the exception when trying to stat network interface
-					Logger.println("A143", 300, "SigarException trying to stat network device " + netIf[i], e);
+					Logger.println("A143", 300, "SigarException trying to stat network device " + netIfName, e);
 					continue;
 				}
 				Map<String, Long> netMap = new HashMap<String, Long>();
@@ -104,7 +115,7 @@ public class HostNetDiskPerf {
 				netMap.put(CounterConstants.HOST_NET_RX_BYTES, rxBytes);
 				netMap.put(CounterConstants.HOST_NET_TX_BYTES, txBytes);
 
-				Map<String, Long> preMap = previousNetworkStats.get(netIf[i]);
+				Map<String, Long> preMap = previousNetworkStats.get(netIfName);
 
 				if (preMap != null) {
 					long rxDelta = (rxBytes - preMap.get(CounterConstants.HOST_NET_RX_BYTES)) / checkIntervalSec; // per sec delta
@@ -116,7 +127,7 @@ public class HostNetDiskPerf {
 					tmpRxTotal += rxDelta;
 					tmpTxTotal += txDelta;
 				}
-				previousNetworkStats.put(netIf[i], netMap);
+				previousNetworkStats.put(netIfName, netMap);
 			}
 
 			HostNetDiskPerf.rxTotalBytesPerSec = tmpRxTotal;
@@ -142,10 +153,14 @@ public class HostNetDiskPerf {
 				try {
 					usage = sigar.getFileSystemUsage(fs[i].getDirName());
 				} catch (SigarException e) {
-					// Ignore the exception when trying to stat file interface
-					Logger.println("A145", 300, "SigarException trying to stat file system device " + fs[i], e);
+					if(!fsExceptionOccured.contains(fs[i].getDirName())) {
+						// Ignore the exception when trying to stat file interface
+						Logger.println("A145", 300, "SigarException trying to stat file system device " + fs[i], e);
+						fsExceptionOccured.add(fs[i].getDirName());
+					}
 					continue;
 				}
+				fsExceptionOccured.remove(fs[i].getDirName());
 				Map<String, Long> fsMap = new HashMap<String, Long>();
 				long readBytes = usage.getDiskReadBytes();
 				long writeBytes = usage.getDiskWriteBytes();

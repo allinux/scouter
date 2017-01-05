@@ -1,3 +1,19 @@
+/*
+ *  Copyright 2016 the original author or authors. 
+ *  @https://github.com/scouter-project/scouter
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); 
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License. 
+ */
 package scouter.client.stack.dialog;
 
 import java.io.IOException;
@@ -9,6 +25,8 @@ import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.layout.TableColumnLayout;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
@@ -26,6 +44,7 @@ import org.eclipse.ui.PlatformUI;
 
 import scouter.client.net.INetReader;
 import scouter.client.net.TcpProxy;
+import scouter.client.stack.actions.FetchSingleStackJob;
 import scouter.client.stack.actions.FetchStackJob;
 import scouter.client.util.ExUtil;
 import scouter.io.DataInputX;
@@ -76,6 +95,24 @@ public class StackListDialog extends Dialog {
 			}
 			public void widgetDefaultSelected(SelectionEvent e) {}
 		});
+		
+		table.addMouseListener(new MouseListener(){
+			public void mouseDoubleClick(MouseEvent e) {
+				TableItem[] items = table.getSelection();
+				if(items == null){
+					return;
+				}				
+				long from = (Long) items[0].getData();
+				new FetchSingleStackJob(serverId, objName, from, getTableList(), null).schedule(500);
+				cancelProessed();
+			}
+
+			public void mouseDown(MouseEvent arg0) {
+			}
+			public void mouseUp(MouseEvent arg0) {
+			}			
+		});
+		
 		TableColumn indexColumn = new TableColumn(table, SWT.NONE);
 		TableColumn timeColumn = new TableColumn(table, SWT.NONE);
 		TableColumnLayout tableColumnLayout = new TableColumnLayout();
@@ -153,5 +190,21 @@ public class StackListDialog extends Dialog {
 			new FetchStackJob(serverId, objName, from, to, items.length).schedule(500);
 		}
 		super.okPressed();
+	}
+	
+	protected void cancelProessed(){
+		super.cancelPressed();
+	}
+	
+	private List<Long> getTableList(){
+		TableItem [] items = table.getItems();
+		if(items == null){
+			return null;
+		}
+		List<Long> list = new ArrayList<Long>();
+		for(TableItem item : items){
+			list.add((Long)item.getData());
+		}
+		return list;
 	}
 }

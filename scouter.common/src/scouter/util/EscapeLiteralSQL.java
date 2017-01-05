@@ -18,7 +18,9 @@
 package scouter.util;
 
 import java.io.File;
-
+/**
+ * bugfix :  parse error for '*' by 2016.08.12 Paul S.J.Kim
+ */
 public class EscapeLiteralSQL {
 
 	static enum STAT {
@@ -32,6 +34,8 @@ public class EscapeLiteralSQL {
 	private char[] chars;
 	private int pos;
 	private int length;
+	
+	private int count;
 
 	final StringBuffer parsedSql;
 	final StringBuffer param;
@@ -115,7 +119,7 @@ public class EscapeLiteralSQL {
 			break;
 		case ALPABET:
 			parsedSql.append(chars[pos]);
-			if (Character.isLetter(chars[pos]) == false) {
+			if (isProgLetter(chars[pos]) == false) {
 				status = STAT.NORMAL;
 			}
 			break;
@@ -127,7 +131,7 @@ public class EscapeLiteralSQL {
 			param.append(chars[pos]);
 			break;
 		default:
-			if (Character.isLetter(chars[pos])) {
+			if (isProgLetter(chars[pos])) {
 				status = STAT.ALPABET;
 			} else {
 				status = STAT.NORMAL;
@@ -136,6 +140,11 @@ public class EscapeLiteralSQL {
 			break;
 		}
 	}
+
+	private boolean isProgLetter(char c) {
+		return Character.isLetter(c) || c == '_';
+	}
+
 	private void _colon() {
 		switch (status) {
 		case COMMENT:
@@ -172,7 +181,7 @@ public class EscapeLiteralSQL {
 			break;
 		case QUTATION:
 			param.append("'");
-			parsedSql.append('\'').append(substitute).append('\'');
+			parsedSql.append('\'').append(substitute).append("{").append(++count).append("}").append('\'');
 			status = STAT.NORMAL;
 			break;
 		}
@@ -188,6 +197,9 @@ public class EscapeLiteralSQL {
 				status = STAT.NORMAL;
 			}
 			break;
+		case QUTATION:
+			param.append(chars[pos]);
+			break;
 		default:
 			parsedSql.append(chars[pos]);
 			status = STAT.NORMAL;
@@ -198,6 +210,9 @@ public class EscapeLiteralSQL {
 		switch (status) {
 		case COMMENT:
 			parsedSql.append(chars[pos]);
+			break;
+		case QUTATION:
+			param.append(chars[pos]);
 			break;
 		default:
 			if (getNext(pos) == '*') {
@@ -262,7 +277,7 @@ public class EscapeLiteralSQL {
 				param.append(",");
 			}
 			param.append(chars[pos]);
-			parsedSql.append(substitute_num);
+			parsedSql.append(substitute_num).append("{").append(++count).append("}");
 			status = STAT.NUMBER;
 			break;
 		case COMMENT:
@@ -283,16 +298,17 @@ public class EscapeLiteralSQL {
 
 	public static void main(String[] args) throws Exception {
 
-		String s = new String(FileUtil.readAll(new File("d:/tmp/sample-query2.sql")), "EUC_KR");
-		// String s = "select  aa ,( a - b)  as b from tab";//new
+		//String s = new String(FileUtil.readAll(new File("d:/tmp/sample-query2.sql")), "EUC_KR");
+	    String s = "select  aa_1 ,( a - b)  as b from tab";//new
 		// String(FileUtil.readAll(new
 		// File("d:/tmp/sample-query2.sql")),"EUC_KR");
 		long time = System.currentTimeMillis();
 		EscapeLiteralSQL ec = new EscapeLiteralSQL(s).process();
 		long etime = System.currentTimeMillis();
-		FileUtil.save("d:/tmp/sample-query2.out", ec.parsedSql.toString().getBytes());
-		System.out.println("SQL: " + s + " " + (etime - time) + " ms");
-		System.out.println("PARAM: " + ec.param);
+		//FileUtil.save("d:/tmp/sample-query2.out", ec.parsedSql.toString().getBytes());
+		System.out.println("SQL Orgin: " + s);
+		System.out.println("SQL Parsed: " + ec.getParsedSql());
+			System.out.println("PARAM: " + ec.param);
 	}
 
 	public String getParsedSql() {

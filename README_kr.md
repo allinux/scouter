@@ -1,16 +1,21 @@
-![scouter](./scouter.document/img/main/scouter-logo-w200.png)
+﻿![scouter](./scouter.document/img/main/scouter-logo-w200.png)
 
 [![Englsh](https://img.shields.io/badge/language-English-red.svg)](README.md) ![Korean](https://img.shields.io/badge/language-Korean-blue.svg)
 
 ## 오픈소스 S/W 어플리케이션 성능 모니터링
 
-APM은 Application performance montoring 또는 application performance management를 의미하고 SCOUTER는 오픈소스 APM 도구로서 Java, WAS에 대한 모니터링 및 DB Agent를 통해 오픈소스 DB 모니터링 기능을 제공한다.
+SCOUTER는 오픈소스 APM 도구로서 Java, WAS에 대한 모니터링 모니터링 기능을 제공한다.
+ - **APM** : Application performance montoring / application performance management
 
 기업용 IT는 상용 서비스를 기반으로 진화하여 왔다. 그러나 이제는 점점 더 오픈 소스 기반의 시스템 구축이 늘어나고 있다. 오픈소스 기반의 시스템을 구축할때 성능 관리 또한 같이 고려 되어야하는데 오픈 소스인 Scouter는 가장 훌륭한 선택이 될 것이다.
 
- - 모니터링 대상 
-   - 오픈소스 WAS - Tomcat, JBoss, Resin ...
-   - 오픈소스 DB - MariaDB (클로즈 베타 테스트 진행중)
+ - 모니터링 대상 (현재)
+   - Java application - Web application (on Tomcat, JBoss, Resin ...), Standalone java application
+   - OS - LInux, Windows, Unix
+
+ - 모니터링 대상 (TOBE)
+   - Nodejs, Redis, Apach HTTPD, nginX, php ...
+
 
 ![Screen](./scouter.document/img/main/dashboard-sample-1.png)
 
@@ -53,7 +58,7 @@ APM은 Application performance montoring 또는 application performance manageme
 <br>
 
 - **Server (Collector)** : Agent가 전송한 데이터를 저장하고 Client 요청시 Client에게 적절한 데이터를 전송
-  - **Scala** : Written in Scala. It will provide a variety of features and performance scalability that can not be written in Java.
+  - **Scala** : Scala를 사용하여 개발하였음으로, 자바 코딩으로는 제공하기 어려운 성능 확장성 및 여러가지 기능들을 제공 할수 있음.
   - **HASH FILE** : 고속의 자체 개발한 Hash 인덱스 방식의 파일 Repository 사용으로 최상의 속도를 동작하며 추가적인 DB 및 라이브러리의 설치가 불필요하여 압축 해제만으로 쉽게 설치 가능.
   - **GZIP** : 압축 옵션을 통해 저장 공간을 절약하도록 개발됨.
 <br>

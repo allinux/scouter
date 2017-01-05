@@ -26,6 +26,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 
 import scouter.client.model.XLogData;
+import scouter.client.threads.ObjectSelectManager;
 import scouter.client.util.ExUtil;
 import scouter.util.DateUtil;
 import scouter.util.IPUtil;
@@ -48,7 +49,7 @@ public class XLogSummaryIPDialog extends XLogSummaryAbstractDialog{
 				while (longEnumer.hasMoreElements()) {
 					XLogData d = dataMap.get(longEnumer.nextLong());
 					long time = d.p.endTime;
-					if (d.filter_ok && time >= stime && time <= etime) {
+					if (d.filter_ok && time >= stime && time <= etime && !ObjectSelectManager.getInstance().isUnselectedObject(d.p.objHash)) {
 						String ip = IPUtil.toString(d.p.ipaddr);
 						IpSummary summary = summaryMap.get(ip);
 						if (summary == null) {
@@ -65,7 +66,7 @@ public class XLogSummaryIPDialog extends XLogSummaryAbstractDialog{
 							summary.error++;
 						}
 						summary.cpu += d.p.cpu;
-						summary.memory += d.p.bytes;
+						summary.memory += d.p.kbytes;
 						summary.sqltime += d.p.sqlTime;
 						summary.apicalltime += d.p.apicallTime;
 					}
