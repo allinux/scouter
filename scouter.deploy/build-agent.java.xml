@@ -6,6 +6,8 @@
 	<property name="tools-jar-file" value="./out/bin/agent.java/scouter.tools.jar"/>
 	<property name="http-jar-file" value="./out/bin/agent.java/scouter.http.jar"/>
 	<property name="httpclient-jar-file" value="./out/bin/agent.java/scouter.httpclient.jar"/>
+	
+	<property name="extra_java_home" value="C:/Program Files (x86)/Java/jdk1.6.0_43"/>
 
 	  <property name="jar-agent-file" value="./out/jar/scouter.agent.jar"/>
 		<property name="deploy-jar-file" value="./out/package/scouter/agent.java/scouter.agent.jar"/>
@@ -51,7 +53,7 @@
 				<pathelement location="./lib/httpcore-4.3.3.jar"/>
 				<pathelement location="./lib/ribbon-loadbalancer-2.0.0.jar"/>
 				<pathelement location="./lib/rxnetty-0.4.6.jar"/>
-			    <pathelement location="${java.home}/../lib/tools.jar"/>
+			    <pathelement location="${extra_java_home}/lib/tools.jar"/>
 				<pathelement location="${class-agent-dir}"/>
 			</classpath>
 		</javac>
